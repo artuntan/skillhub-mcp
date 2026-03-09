@@ -11,7 +11,7 @@ import { join } from "path";
 import { getStats } from "./engine/loader.js";
 
 // ── Version ──────────────────────────────────────────────────
-export const VERSION = "0.2.2";
+export const VERSION = "0.3.0";
 
 // ── Client definitions ──────────────────────────────────────
 

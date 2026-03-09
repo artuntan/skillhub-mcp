@@ -7,11 +7,12 @@ import { analyzePrompt, explainRecommendation } from "./engine/analyzer.js";
 import { loadResources, getIndex, findResourceById, findResourceByTitle, getStats } from "./engine/loader.js";
 import { rankResources, deduplicateResults } from "./engine/ranker.js";
 import type { ResourceType, Ecosystem, RecommendResult } from "./types.js";
+import { VERSION } from "./setup.js";
 
 export function createServer(): McpServer {
     const server = new McpServer({
         name: "skillhub",
-        version: "0.1.0",
+        version: VERSION,
     });
 
     // ═══════════════════════════════════════════════════════════

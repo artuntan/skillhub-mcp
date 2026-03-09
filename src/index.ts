@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 /**
- * SkillHub MCP — Unified entrypoint.
+ * SkillHub MCP — Unified entrypoint v0.3.0
  *
- * Smart dispatcher:
- *   npx skillhub-mcp                        → Help screen (interactive) / MCP server (piped)
- *   npx skillhub-mcp setup [client]         → Setup wizard
- *   npx skillhub-mcp doctor                 → Diagnose issues
- *   npx skillhub-mcp print-config <client>  → Print config snippet
- *   npx skillhub-mcp recommend "..."        → CLI recommend
- *   npx skillhub-mcp search "..."           → CLI search
- *   npx skillhub-mcp info "..."             → CLI info
- *   npx skillhub-mcp stats                  → CLI stats
+ * Smart dispatcher with premium terminal presentation.
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
-import { analyzePrompt } from "./engine/analyzer.js";
+import { analyzePrompt, explainRecommendation } from "./engine/analyzer.js";
 import { loadResources, getIndex, findResourceByTitle, getStats } from "./engine/loader.js";
 import { rankResources, deduplicateResults } from "./engine/ranker.js";
 import { runSetup, runDoctor, runPrintConfig, VERSION } from "./setup.js";
+import * as ui from "./ui.js";
 
-const args = process.argv.slice(2);
+// ── Parse args ───────────────────────────────────────────────
+const rawArgs = process.argv.slice(2);
+const flags = new Set(rawArgs.filter(a => a.startsWith("--")));
+const args = rawArgs.filter(a => !a.startsWith("--"));
 const command = args[0]?.toLowerCase();
+
+// Handle global flags
+if (flags.has("--no-color")) ui.setColor(false);
+if (flags.has("--json")) { ui.setJsonMode(true); ui.setColor(false); }
 
 // ── Route ────────────────────────────────────────────────────
 const CLI_COMMANDS = new Set([
@@ -34,7 +34,6 @@ if (command && CLI_COMMANDS.has(command)) {
 } else if (command === "serve" || command === "server") {
     startServer();
 } else if (!process.stdin.isTTY) {
-    // stdin piped → MCP client connecting
     startServer();
 } else {
     printHelp();
@@ -59,67 +58,39 @@ async function startServer() {
 // CLI
 // ═════════════════════════════════════════════════════════════
 
-function printBanner() {
-    console.log("");
-    console.log("  ⚡ SkillHub — AI Resource Intelligence");
-    console.log("  ─────────────────────────────────────");
-}
-
-function printResult(r: {
-    title: string;
-    description: string;
-    type: string;
-    ecosystem: string;
-    url: string;
-    stars: number;
-    score?: number;
-    verified?: boolean;
-}) {
-    const stars = r.stars > 0 ? ` ⭐ ${r.stars >= 1000 ? `${Math.round(r.stars / 1000)}k` : r.stars}` : "";
-    const score = r.score ? ` (${Math.round(r.score * 100)}%)` : "";
-    const verified = r.verified ? " ✅" : "";
-    console.log(`  ⚡ ${r.title}${score}${stars}${verified}`);
-    console.log(`     ${r.description.slice(0, 120)}`);
-    console.log(`     [${r.type}] [${r.ecosystem}] ${r.url}`);
-    console.log();
-}
-
 function printHelp() {
-    printBanner();
-    console.log(`  v${VERSION}
-`);
-    console.log(`  Usage:
-    npx skillhub-mcp <command> [options]
+    console.log(ui.banner());
+    console.log(`  ${ui.dim(`v${VERSION}`)}`);
 
-  Getting Started:
-    setup [client]       Configure an MCP client (codex, claude, cursor, windsurf)
-    doctor               Diagnose installation and config issues
+    console.log(ui.helpSection("Getting Started"));
+    console.log(ui.helpCommand("setup [client]", "Configure MCP client (codex, claude, cursor, windsurf)"));
+    console.log(ui.helpCommand("doctor", "Diagnose installation and config issues"));
 
-  AI Resource Tools:
-    recommend <task>     Get AI tool recommendations for a task
-    search <query>       Search 20,000+ resources by keyword
-    info <name>          Get details about a specific resource
-    stats                Show database statistics
+    console.log(ui.helpSection("AI Resource Tools"));
+    console.log(ui.helpCommand("recommend <task>", "Get AI tool recommendations for a task"));
+    console.log(ui.helpCommand("search <query>", "Search 20,000+ resources by keyword"));
+    console.log(ui.helpCommand("info <name>", "Get details about a specific resource"));
+    console.log(ui.helpCommand("stats", "Show database statistics"));
 
-  Advanced:
-    print-config <client>  Print MCP config snippet without writing it
-    serve                  Start as MCP server manually
+    console.log(ui.helpSection("Options"));
+    console.log(ui.helpCommand("--json", "Output results as JSON (pipeable)"));
+    console.log(ui.helpCommand("--no-color", "Disable colored output"));
+    console.log(ui.helpCommand("--version", "Show version number"));
 
-  Quick Start:
-    1. Install:  npx skillhub-mcp setup
-    2. Restart your AI client
-    3. Done! Your AI can now recommend tools.
+    console.log(ui.helpSection("Quick Start"));
+    console.log(`    ${ui.cyan("1.")} npx skillhub-mcp setup`);
+    console.log(`    ${ui.cyan("2.")} Restart your AI client`);
+    console.log(`    ${ui.cyan("3.")} Done — your AI can now recommend tools`);
 
-  Examples:
-    npx skillhub-mcp setup codex
-    npx skillhub-mcp recommend "build a RAG pipeline with LangChain"
-    npx skillhub-mcp search "vector database"
-    npx skillhub-mcp doctor
-`);
+    console.log(ui.helpSection("Examples"));
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp recommend ${ui.dim('"build a RAG pipeline with LangChain"')}`);
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp search ${ui.dim('"vector database"')} --json`);
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp setup codex`);
+    console.log("");
 }
 
 async function runCLI(cmd: string, cliArgs: string[]) {
-    const query = cliArgs.join(" ");
+    const query = cliArgs.filter(a => !a.startsWith("--")).join(" ");
 
     switch (cmd) {
         case "setup": {
@@ -134,8 +105,8 @@ async function runCLI(cmd: string, cliArgs: string[]) {
 
         case "print-config": {
             if (!cliArgs[0]) {
-                console.error("  Usage: npx skillhub-mcp print-config <client>");
-                console.error("  Clients: codex, claude, cursor, windsurf");
+                console.error(`  ${ui.red("Usage:")} npx skillhub-mcp print-config <client>`);
+                console.error(`  ${ui.dim("Clients: codex, claude, cursor, windsurf")}`);
                 process.exit(1);
             }
             runPrintConfig(cliArgs[0]);
@@ -151,36 +122,88 @@ async function runCLI(cmd: string, cliArgs: string[]) {
         case "recommend":
         case "rec": {
             if (!query) {
-                console.error("  Usage: npx skillhub-mcp recommend <task description>");
-                console.error('  Example: npx skillhub-mcp recommend "build a RAG pipeline"');
+                console.error(`  ${ui.red("Usage:")} npx skillhub-mcp recommend <task description>`);
+                console.error(`  ${ui.dim('Example: npx skillhub-mcp recommend "build a RAG pipeline"')}`);
                 process.exit(1);
             }
-            printBanner();
-            console.log(`  🔍 Analyzing: "${query}"\n`);
 
             const analysis = analyzePrompt(query);
             const index = getIndex();
             const resources = loadResources();
-
-            if (analysis.technologies.length > 0) {
-                console.log(`  📊 Detected technologies: ${analysis.technologies.join(", ")}`);
-            }
-            console.log(`  🏷️  Task categories: ${analysis.categories.join(", ")}\n`);
 
             const queries = [query, ...analysis.technologies, ...analysis.categories.filter(c => c !== "general")];
             const searchResults = index.multiSearch(queries, 100);
             const ranked = rankResources(searchResults, analysis, resources, { maxResults: 20 });
             const deduped = deduplicateResults(ranked).slice(0, 10);
 
-            if (deduped.length === 0) {
-                console.log("  No matching resources found. Try a different query.");
+            // --json mode
+            if (ui.isJsonMode()) {
+                ui.outputJson({
+                    query,
+                    analysis: {
+                        technologies: analysis.technologies,
+                        categories: analysis.categories,
+                        ecosystems: analysis.ecosystems,
+                    },
+                    resultCount: deduped.length,
+                    totalResources: resources.length,
+                    results: deduped.map(({ resource, score }, i) => ({
+                        rank: i + 1,
+                        title: resource.title,
+                        description: resource.description,
+                        type: resource.type,
+                        ecosystem: resource.ecosystem,
+                        url: resource.url,
+                        score: ui.normalizeScore(score),
+                        stars: resource.stars,
+                        verified: resource.verified,
+                        creator: resource.creator,
+                        installCommand: resource.installCommand || null,
+                        whyRecommended: explainRecommendation(resource, analysis),
+                    })),
+                });
                 return;
             }
 
-            console.log(`  📦 Top ${deduped.length} recommendations:\n`);
+            // Pretty output
+            console.log(ui.banner());
+            console.log(ui.heading(`Recommendations for "${query}"`));
+            console.log("");
 
-            for (const { resource, score } of deduped) {
-                printResult({ ...resource, score });
+            // Analysis summary
+            const parts: string[] = [];
+            if (analysis.technologies.length > 0) {
+                parts.push(`${ui.bold("Detected:")} ${analysis.technologies.join(", ")}`);
+            }
+            parts.push(`${ui.bold("Categories:")} ${analysis.categories.join(", ")}`);
+            console.log(`  ${parts.join(ui.dim(" │ "))}`);
+            console.log(`  ${ui.dim(`Found ${deduped.length} results from ${resources.length.toLocaleString()} resources`)}`);
+
+            if (deduped.length === 0) {
+                console.log(`\n  ${ui.yellow("No matching resources found.")} Try a different query.`);
+                console.log("");
+                return;
+            }
+
+            console.log("");
+
+            for (let i = 0; i < deduped.length; i++) {
+                const { resource, score } = deduped[i];
+                console.log(ui.resultCard({
+                    rank: i + 1,
+                    title: resource.title,
+                    description: resource.description,
+                    type: resource.type,
+                    ecosystem: resource.ecosystem,
+                    url: resource.url,
+                    stars: resource.stars,
+                    score,
+                    verified: resource.verified,
+                    creator: resource.creator,
+                    installCommand: resource.installCommand,
+                    whyRecommended: explainRecommendation(resource, analysis),
+                }));
+                console.log("");
             }
             break;
         }
@@ -188,25 +211,68 @@ async function runCLI(cmd: string, cliArgs: string[]) {
         case "search":
         case "s": {
             if (!query) {
-                console.error("  Usage: npx skillhub-mcp search <query>");
-                console.error('  Example: npx skillhub-mcp search "vector database"');
+                console.error(`  ${ui.red("Usage:")} npx skillhub-mcp search <query>`);
+                console.error(`  ${ui.dim('Example: npx skillhub-mcp search "vector database"')}`);
                 process.exit(1);
             }
-            printBanner();
+
             const index = getIndex();
             const resources = loadResources();
             const results = index.search(query, 15);
 
-            console.log(`  🔍 Results for "${query}" (${results.length} matches):\n`);
-
-            if (results.length === 0) {
-                console.log("  No matching resources found. Try a different query.");
+            // --json mode
+            if (ui.isJsonMode()) {
+                ui.outputJson({
+                    query,
+                    resultCount: results.length,
+                    results: results.map(({ index: idx, score }, i) => {
+                        const r = resources[idx];
+                        return {
+                            rank: i + 1,
+                            title: r.title,
+                            description: r.description,
+                            type: r.type,
+                            ecosystem: r.ecosystem,
+                            url: r.url,
+                            score: ui.normalizeScore(score / 3),
+                            stars: r.stars,
+                            verified: r.verified,
+                            creator: r.creator,
+                        };
+                    }),
+                });
                 return;
             }
 
-            for (const { index: idx, score } of results) {
+            // Pretty output
+            console.log(ui.banner());
+            console.log(ui.heading(`Search: "${query}"`));
+            console.log(`  ${ui.dim(`${results.length} results from ${resources.length.toLocaleString()} resources`)}`);
+
+            if (results.length === 0) {
+                console.log(`\n  ${ui.yellow("No matching resources found.")} Try a different query.`);
+                console.log("");
+                return;
+            }
+
+            console.log("");
+
+            for (let i = 0; i < results.length; i++) {
+                const { index: idx, score } = results[i];
                 const r = resources[idx];
-                printResult({ ...r, score: score / 30 });
+                console.log(ui.resultCard({
+                    rank: i + 1,
+                    title: r.title,
+                    description: r.description,
+                    type: r.type,
+                    ecosystem: r.ecosystem,
+                    url: r.url,
+                    stars: r.stars,
+                    score: score / 3,
+                    verified: r.verified,
+                    creator: r.creator,
+                }));
+                console.log("");
             }
             break;
         }
@@ -214,48 +280,91 @@ async function runCLI(cmd: string, cliArgs: string[]) {
         case "info":
         case "i": {
             if (!query) {
-                console.error("  Usage: npx skillhub-mcp info <resource name>");
-                console.error('  Example: npx skillhub-mcp info "LangChain"');
+                console.error(`  ${ui.red("Usage:")} npx skillhub-mcp info <resource name>`);
+                console.error(`  ${ui.dim('Example: npx skillhub-mcp info "LangChain"')}`);
                 process.exit(1);
             }
-            printBanner();
+
             const resource = findResourceByTitle(query);
             if (!resource) {
-                console.log(`  ❌ Resource "${query}" not found.`);
-                console.log(`  💡 Try: npx skillhub-mcp search "${query}"`);
+                console.log(`\n  ${ui.red("✗")} Resource "${query}" not found.`);
+                console.log(`  ${ui.dim("💡 Try:")} npx skillhub-mcp search "${query}"`);
+                console.log("");
                 process.exit(1);
             }
-            console.log(`\n  ⚡ ${resource.title}`);
-            console.log(`  ─────────────────────────────────────`);
-            console.log(`  ${resource.description}`);
-            console.log();
-            console.log(`  Type:       ${resource.type}`);
-            console.log(`  Ecosystem:  ${resource.ecosystem}`);
-            console.log(`  Creator:    ${resource.creator}`);
-            console.log(`  Stars:      ${resource.stars > 0 ? resource.stars.toLocaleString() : "—"}`);
-            console.log(`  Verified:   ${resource.verified ? "✅ Yes" : "—"}`);
-            console.log(`  Tags:       ${resource.tags.join(", ")}`);
-            console.log(`  URL:        ${resource.url}`);
-            if (resource.repositoryUrl) console.log(`  Repo:       ${resource.repositoryUrl}`);
-            if (resource.installCommand) console.log(`  Install:    ${resource.installCommand}`);
-            if (resource.docsUrl) console.log(`  Docs:       ${resource.docsUrl}`);
-            console.log();
+
+            // --json mode
+            if (ui.isJsonMode()) {
+                ui.outputJson({
+                    id: resource.id,
+                    title: resource.title,
+                    description: resource.description,
+                    type: resource.type,
+                    ecosystem: resource.ecosystem,
+                    tags: resource.tags,
+                    url: resource.url,
+                    repositoryUrl: resource.repositoryUrl || null,
+                    creator: resource.creator,
+                    stars: resource.stars,
+                    installType: resource.installType,
+                    installCommand: resource.installCommand || null,
+                    docsUrl: resource.docsUrl || null,
+                    verified: resource.verified,
+                    confidence: resource.confidence,
+                });
+                return;
+            }
+
+            // Pretty output
+            console.log(ui.banner());
+            console.log(ui.infoCard({
+                title: resource.title,
+                description: resource.description,
+                type: resource.type,
+                ecosystem: resource.ecosystem,
+                creator: resource.creator,
+                stars: resource.stars,
+                verified: resource.verified,
+                tags: resource.tags,
+                url: resource.url,
+                repositoryUrl: resource.repositoryUrl,
+                installCommand: resource.installCommand,
+                docsUrl: resource.docsUrl,
+            }));
             break;
         }
 
         case "stats": {
-            printBanner();
             const stats = getStats();
-            console.log(`\n  📊 Database: ${stats.total.toLocaleString()} resources\n`);
-            console.log("  By Type:");
-            for (const [type, count] of Object.entries(stats.byType).sort((a, b) => b[1] - a[1])) {
-                console.log(`    ${type.padEnd(20)} ${count.toLocaleString()}`);
+
+            // --json mode
+            if (ui.isJsonMode()) {
+                ui.outputJson(stats);
+                return;
             }
-            console.log("\n  By Ecosystem:");
-            for (const [eco, count] of Object.entries(stats.byEcosystem).sort((a, b) => b[1] - a[1])) {
-                console.log(`    ${eco.padEnd(20)} ${count.toLocaleString()}`);
-            }
-            console.log();
+
+            // Pretty output
+            console.log(ui.banner());
+            console.log(ui.heading(`Database: ${ui.bold(stats.total.toLocaleString())} resources`));
+            console.log("");
+
+            // Type distribution
+            console.log(ui.subheading("By Type"));
+            const typeItems = Object.entries(stats.byType)
+                .sort((a, b) => b[1] - a[1])
+                .map(([label, value]) => ({ label, value }));
+            console.log(ui.barChart(typeItems).join("\n"));
+
+            console.log("");
+
+            // Ecosystem distribution
+            console.log(ui.subheading("By Ecosystem"));
+            const ecoItems = Object.entries(stats.byEcosystem)
+                .sort((a, b) => b[1] - a[1])
+                .map(([label, value]) => ({ label, value }));
+            console.log(ui.barChart(ecoItems).join("\n"));
+
+            console.log("");
             break;
         }
 
