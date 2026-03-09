@@ -1,6 +1,6 @@
 {
     "name": "skillhub-mcp",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "AI resource intelligence MCP server — recommends skills, tools, agents, rules, and MCP servers from 20,000+ resources",
     "type": "module",
     "bin": {
@@ -49,11 +49,11 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/skillhub/mcp.git"
+        "url": "git+https://github.com/artuntan/skillhub-mcp.git"
     },
-    "homepage": "https://github.com/skillhub/mcp#readme",
+    "homepage": "https://github.com/artuntan/skillhub-mcp#readme",
     "bugs": {
-        "url": "https://github.com/skillhub/mcp/issues"
+        "url": "https://github.com/artuntan/skillhub-mcp/issues"
     },
     "engines": {
         "node": ">=18.0.0"
