@@ -1,7 +1,8 @@
 /**
  * Data Loader — Loads and initializes the resource database and search index.
  */
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
+import { gunzipSync } from "zlib";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import type { Resource } from "../types.js";
@@ -14,15 +15,24 @@ let _resources: Resource[] | null = null;
 let _index: SearchIndex | null = null;
 
 /**
- * Load resources from the bundled JSON file.
+ * Load resources from the bundled database file.
+ * Supports gzip-compressed (.json.gz) and uncompressed (.json) formats.
  */
 export function loadResources(): Resource[] {
     if (_resources) return _resources;
 
-    const dataPath = join(__dirname, "data", "resources.json");
-    const raw = readFileSync(dataPath, "utf-8");
-    _resources = JSON.parse(raw) as Resource[];
+    const gzPath = join(__dirname, "data", "resources.json.gz");
+    const jsonPath = join(__dirname, "data", "resources.json");
 
+    let raw: string;
+    if (existsSync(gzPath)) {
+        const compressed = readFileSync(gzPath);
+        raw = gunzipSync(compressed).toString("utf-8");
+    } else {
+        raw = readFileSync(jsonPath, "utf-8");
+    }
+
+    _resources = JSON.parse(raw) as Resource[];
     return _resources;
 }
 

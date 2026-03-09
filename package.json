@@ -1,6 +1,6 @@
 {
     "name": "skillhub-mcp",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "AI resource intelligence MCP server — recommends skills, tools, agents, rules, and MCP servers from 20,000+ resources. Fully offline, zero network access.",
     "type": "module",
     "bin": {
@@ -15,6 +15,7 @@
         "dist/",
         "README.md",
         "SECURITY.md",
+        "CHANGELOG.md",
         "LICENSE"
     ],
     "scripts": {

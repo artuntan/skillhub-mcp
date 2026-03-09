@@ -1,16 +1,18 @@
 import { build } from "esbuild";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "fs";
+import { gzipSync } from "zlib";
 
 // Bundle index.ts and cli.ts into self-contained files.
 // Tree-shakes unused SDK code (express, hono, cross-spawn, jose, pkce, cors).
-// Result: zero runtime node_modules dependencies needed at install time.
+// Gzip compresses the resource database (9.3MB → ~700KB).
+// Result: zero runtime dependencies, minimal package size.
 
 const shared = {
     bundle: true,
     platform: "node",
     target: "node18",
     format: "esm",
-    sourcemap: true,
+    sourcemap: false, // no source maps in published package
     minify: false, // keep readable for auditability
     external: [
         "fs", "path", "os", "url", "util", "stream", "events", "buffer",
@@ -37,6 +39,7 @@ function addShebang(filePath) {
 async function bundle() {
     mkdirSync("dist/data", { recursive: true });
 
+    // Bundle entrypoints
     await build({
         ...shared,
         entryPoints: ["src/index.ts"],
@@ -49,12 +52,21 @@ async function bundle() {
         outfile: "dist/cli.js",
     });
 
+    // Add shebangs
     addShebang("dist/index.js");
     addShebang("dist/cli.js");
 
-    copyFileSync("src/data/resources.json", "dist/data/resources.json");
+    // Gzip compress the resource database (9.3MB → ~700KB)
+    const raw = readFileSync("src/data/resources.json");
+    const compressed = gzipSync(raw, { level: 9 });
+    writeFileSync("dist/data/resources.json.gz", compressed);
 
-    console.log("✓ Bundle complete — zero runtime dependencies");
+    const rawKB = (raw.length / 1024).toFixed(0);
+    const gzKB = (compressed.length / 1024).toFixed(0);
+    const ratio = ((1 - compressed.length / raw.length) * 100).toFixed(0);
+
+    console.log(`✓ Bundle complete — zero runtime dependencies`);
+    console.log(`✓ Database compressed: ${rawKB}KB → ${gzKB}KB (${ratio}% smaller)`);
 }
 
 bundle().catch((err) => {

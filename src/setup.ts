@@ -11,7 +11,7 @@ import { getStats } from "./engine/loader.js";
 import * as ui from "./ui.js";
 
 // ── Version ──────────────────────────────────────────────────
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 
 // ── Client definitions ──────────────────────────────────────
 
