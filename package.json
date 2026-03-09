@@ -1,0 +1,70 @@
+{
+    "name": "skillhub-mcp",
+    "version": "0.2.0",
+    "description": "AI resource intelligence MCP server — recommends skills, tools, agents, rules, and MCP servers from 20,000+ resources",
+    "type": "module",
+    "bin": {
+        "skillhub-mcp": "dist/index.js",
+        "skillhub": "dist/index.js"
+    },
+    "main": "./dist/index.js",
+    "exports": {
+        ".": "./dist/index.js",
+        "./server": "./dist/server.js",
+        "./types": "./dist/types.js"
+    },
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "clean": "rm -rf dist",
+        "build:ts": "tsc",
+        "build:data": "mkdir -p dist/data && cp src/data/resources.json dist/data/resources.json",
+        "build": "npm run clean && npm run build:ts && npm run build:data",
+        "dev": "tsx src/index.ts",
+        "start": "node dist/index.js",
+        "cli": "tsx src/cli.ts",
+        "test": "node dist/cli.js stats",
+        "test:recommend": "node dist/cli.js recommend 'build a RAG pipeline with LangChain'",
+        "prepublishOnly": "npm run build && npm test",
+        "postbuild": "node -e \"const fs=require('fs'); ['dist/index.js','dist/cli.js'].forEach(f => { const c = fs.readFileSync(f,'utf8'); if(!c.startsWith('#!')) fs.writeFileSync(f, '#!/usr/bin/env node\\n' + c); fs.chmodSync(f, '755'); });\""
+    },
+    "keywords": [
+        "mcp",
+        "mcp-server",
+        "ai",
+        "ai-tools",
+        "skills",
+        "recommendation",
+        "model-context-protocol",
+        "claude",
+        "cursor",
+        "windsurf",
+        "copilot",
+        "llm"
+    ],
+    "author": "SkillHub",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/skillhub/mcp.git"
+    },
+    "homepage": "https://github.com/skillhub/mcp#readme",
+    "bugs": {
+        "url": "https://github.com/skillhub/mcp/issues"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.12.1",
+        "zod": "^3.24.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "tsx": "^4.19.0",
+        "typescript": "^5.7.0"
+    }
+}
