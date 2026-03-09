@@ -5,14 +5,13 @@
  * for Codex, Claude Desktop, Cursor, Windsurf.
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { execSync } from "child_process";
 import { homedir } from "os";
 import { join } from "path";
 import { getStats } from "./engine/loader.js";
 import * as ui from "./ui.js";
 
 // ── Version ──────────────────────────────────────────────────
-export const VERSION = "0.4.0";
+export const VERSION = "0.5.0";
 
 // ── Client definitions ──────────────────────────────────────
 
@@ -99,21 +98,24 @@ tool_timeout_sec = 60`.trim(),
 
 // ── Utility functions ────────────────────────────────────────
 
+/** Resolve absolute npx path using pure filesystem checks — no shell spawning */
 export function resolveNpxPath(): string {
     const candidates = [
         "/opt/homebrew/bin/npx",
         "/usr/local/bin/npx",
         "/usr/bin/npx",
+        "/opt/local/bin/npx",
+        join(homedir(), ".nvm/versions/node", process.version, "bin/npx"),
     ];
-
-    try {
-        const result = execSync("which npx", { encoding: "utf-8" }).trim();
-        if (result && existsSync(result)) return result;
-    } catch { /* ignore */ }
 
     for (const candidate of candidates) {
         if (existsSync(candidate)) return candidate;
     }
+
+    // Fallback: use process.execPath to find npx next to node
+    const nodeDir = process.execPath.replace(/\/node$/, "");
+    const npxNextToNode = join(nodeDir, "npx");
+    if (existsSync(npxNextToNode)) return npxNextToNode;
 
     return "npx";
 }

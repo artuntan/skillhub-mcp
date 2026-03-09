@@ -93,6 +93,21 @@ When connected to an AI client, SkillHub exposes these tools:
 
 ---
 
+## Security & Trust
+
+**This package is designed to be safe and auditable.**
+
+- ✅ **Fully offline** — zero network requests, no HTTP calls, no telemetry
+- ✅ **Zero runtime dependencies** — self-contained bundle, nothing from `node_modules`
+- ✅ **No install scripts** — no `postinstall`, no code runs on `npm install`
+- ✅ **No eval** — no `eval()`, `new Function()`, or dynamic code execution
+- ✅ **No shell access** — no `exec()`, `spawn()`, or `child_process` usage
+- ✅ **Filesystem access only in setup wizard** — writes MCP client configs when you explicitly run `setup`
+
+See [SECURITY.md](SECURITY.md) for full details on runtime behavior and filesystem access.
+
+---
+
 ## Diagnostics
 
 ```bash
@@ -114,7 +129,7 @@ npx skillhub-mcp print-config cursor   # Cursor (JSON)
 npx skillhub-mcp print-config windsurf # Windsurf (JSON)
 ```
 
-> **Important:** The setup wizard uses absolute paths for `npx` (e.g., `/opt/homebrew/bin/npx`). GUI applications like Claude Desktop and Cursor often don't inherit your shell's PATH, so relative `npx` will fail silently.
+> **Important:** The setup wizard uses absolute paths for `npx` (e.g., `/opt/homebrew/bin/npx`). GUI applications often don't inherit your shell's PATH.
 
 ---
 

@@ -19,7 +19,7 @@ let _index: SearchIndex | null = null;
 export function loadResources(): Resource[] {
     if (_resources) return _resources;
 
-    const dataPath = join(__dirname, "..", "data", "resources.json");
+    const dataPath = join(__dirname, "data", "resources.json");
     const raw = readFileSync(dataPath, "utf-8");
     _resources = JSON.parse(raw) as Resource[];
 
