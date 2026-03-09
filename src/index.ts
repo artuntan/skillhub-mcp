@@ -3,39 +3,40 @@
  * SkillHub MCP — Unified entrypoint.
  *
  * Smart dispatcher:
- *   npx skillhub-mcp                     → MCP server (stdio transport)
- *   npx skillhub-mcp recommend "..."     → CLI recommend
- *   npx skillhub-mcp search "..."        → CLI search
- *   npx skillhub-mcp info "..."          → CLI info
- *   npx skillhub-mcp stats              → CLI stats
- *   npx skillhub-mcp --help             → usage help
- *
- * MCP server starts ONLY when no CLI command is given AND stdin is piped.
- * If the user just runs `npx skillhub-mcp` in a terminal (no pipe),
- * they get the help screen instead of a hanging process.
+ *   npx skillhub-mcp                        → Help screen (interactive) / MCP server (piped)
+ *   npx skillhub-mcp setup [client]         → Setup wizard
+ *   npx skillhub-mcp doctor                 → Diagnose issues
+ *   npx skillhub-mcp print-config <client>  → Print config snippet
+ *   npx skillhub-mcp recommend "..."        → CLI recommend
+ *   npx skillhub-mcp search "..."           → CLI search
+ *   npx skillhub-mcp info "..."             → CLI info
+ *   npx skillhub-mcp stats                  → CLI stats
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
-import { analyzePrompt, explainRecommendation } from "./engine/analyzer.js";
+import { analyzePrompt } from "./engine/analyzer.js";
 import { loadResources, getIndex, findResourceByTitle, getStats } from "./engine/loader.js";
 import { rankResources, deduplicateResults } from "./engine/ranker.js";
+import { runSetup, runDoctor, runPrintConfig, VERSION } from "./setup.js";
 
 const args = process.argv.slice(2);
 const command = args[0]?.toLowerCase();
 
-// ── CLI commands ─────────────────────────────────────────────
-const CLI_COMMANDS = new Set(["recommend", "rec", "search", "s", "info", "i", "stats", "help", "--help", "-h"]);
+// ── Route ────────────────────────────────────────────────────
+const CLI_COMMANDS = new Set([
+    "recommend", "rec", "search", "s", "info", "i", "stats",
+    "setup", "doctor", "print-config",
+    "help", "--help", "-h", "--version", "-v",
+]);
 
 if (command && CLI_COMMANDS.has(command)) {
-    runCLI(command, args.slice(1).join(" "));
+    runCLI(command, args.slice(1));
 } else if (command === "serve" || command === "server") {
-    // Explicit server mode
     startServer();
 } else if (!process.stdin.isTTY) {
-    // stdin is piped → MCP client is connecting
+    // stdin piped → MCP client connecting
     startServer();
 } else {
-    // Interactive terminal, no command → show help
     printHelp();
 }
 
@@ -46,13 +47,12 @@ async function startServer() {
     const server = createServer();
     const transport = new StdioServerTransport();
 
-    console.error("[skillhub] Starting SkillHub MCP Server v0.1.0");
-    console.error("[skillhub] AI resource intelligence for Claude, Cursor, Windsurf, and more");
-    console.error("[skillhub] Loading 20,000+ AI resources...");
+    console.error(`[skillhub] Starting SkillHub MCP Server v${VERSION}`);
+    console.error("[skillhub] AI resource intelligence — 20,000+ resources");
 
     await server.connect(transport);
 
-    console.error("[skillhub] Server ready — waiting for MCP client connection");
+    console.error("[skillhub] Server ready — connected to MCP client");
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -86,46 +86,73 @@ function printResult(r: {
 
 function printHelp() {
     printBanner();
-    console.log(`
-  Usage:
+    console.log(`  v${VERSION}
+`);
+    console.log(`  Usage:
     npx skillhub-mcp <command> [options]
 
-  Commands:
+  Getting Started:
+    setup [client]       Configure an MCP client (codex, claude, cursor, windsurf)
+    doctor               Diagnose installation and config issues
+
+  AI Resource Tools:
     recommend <task>     Get AI tool recommendations for a task
-    search <query>       Search resources by keyword
+    search <query>       Search 20,000+ resources by keyword
     info <name>          Get details about a specific resource
     stats                Show database statistics
-    serve                Start as MCP server (for Claude/Cursor/Windsurf)
+
+  Advanced:
+    print-config <client>  Print MCP config snippet without writing it
+    serve                  Start as MCP server manually
+
+  Quick Start:
+    1. Install:  npx skillhub-mcp setup
+    2. Restart your AI client
+    3. Done! Your AI can now recommend tools.
 
   Examples:
+    npx skillhub-mcp setup codex
     npx skillhub-mcp recommend "build a RAG pipeline with LangChain"
     npx skillhub-mcp search "vector database"
-    npx skillhub-mcp info "Pinecone"
-    npx skillhub-mcp stats
-
-  MCP Server:
-    Configure in Claude Desktop (~/Library/Application Support/Claude/claude_desktop_config.json):
-    {
-      "mcpServers": {
-        "skillhub": {
-          "command": "npx",
-          "args": ["-y", "skillhub-mcp"]
-        }
-      }
-    }
-
-  Database: 20,000+ AI resources (skills, tools, agents, rules, MCP servers)
-  More info: https://www.npmjs.com/package/skillhub-mcp
+    npx skillhub-mcp doctor
 `);
 }
 
-async function runCLI(cmd: string, query: string) {
+async function runCLI(cmd: string, cliArgs: string[]) {
+    const query = cliArgs.join(" ");
+
     switch (cmd) {
+        case "setup": {
+            runSetup(cliArgs[0]);
+            break;
+        }
+
+        case "doctor": {
+            runDoctor();
+            break;
+        }
+
+        case "print-config": {
+            if (!cliArgs[0]) {
+                console.error("  Usage: npx skillhub-mcp print-config <client>");
+                console.error("  Clients: codex, claude, cursor, windsurf");
+                process.exit(1);
+            }
+            runPrintConfig(cliArgs[0]);
+            break;
+        }
+
+        case "--version":
+        case "-v": {
+            console.log(`skillhub-mcp v${VERSION}`);
+            break;
+        }
+
         case "recommend":
         case "rec": {
             if (!query) {
                 console.error("  Usage: npx skillhub-mcp recommend <task description>");
-                console.error("  Example: npx skillhub-mcp recommend \"build a RAG pipeline\"");
+                console.error('  Example: npx skillhub-mcp recommend "build a RAG pipeline"');
                 process.exit(1);
             }
             printBanner();
@@ -162,7 +189,7 @@ async function runCLI(cmd: string, query: string) {
         case "s": {
             if (!query) {
                 console.error("  Usage: npx skillhub-mcp search <query>");
-                console.error("  Example: npx skillhub-mcp search \"vector database\"");
+                console.error('  Example: npx skillhub-mcp search "vector database"');
                 process.exit(1);
             }
             printBanner();
@@ -188,7 +215,7 @@ async function runCLI(cmd: string, query: string) {
         case "i": {
             if (!query) {
                 console.error("  Usage: npx skillhub-mcp info <resource name>");
-                console.error("  Example: npx skillhub-mcp info \"LangChain\"");
+                console.error('  Example: npx skillhub-mcp info "LangChain"');
                 process.exit(1);
             }
             printBanner();
