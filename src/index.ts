@@ -14,8 +14,9 @@ import * as ui from "./ui.js";
 
 // ── Parse args ───────────────────────────────────────────────
 const rawArgs = process.argv.slice(2);
-const flags = new Set(rawArgs.filter(a => a.startsWith("--")));
-const args = rawArgs.filter(a => !a.startsWith("--"));
+const GLOBAL_FLAGS = new Set(["--json", "--no-color"]);
+const flags = new Set(rawArgs.filter(a => GLOBAL_FLAGS.has(a)));
+const args = rawArgs.filter(a => !GLOBAL_FLAGS.has(a));
 const command = args[0]?.toLowerCase();
 
 // Handle global flags

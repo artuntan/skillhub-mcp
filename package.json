@@ -1,6 +1,6 @@
 {
     "name": "skillhub-mcp",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "AI resource intelligence MCP server — recommends skills, tools, agents, rules, and MCP servers from 20,000+ resources",
     "type": "module",
     "bin": {
