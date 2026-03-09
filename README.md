@@ -1,142 +1,128 @@
-# skillhub-mcp
+# ⚡ SkillHub MCP
 
-> **AI resource intelligence for Codex, Claude, Cursor, Windsurf, and more.**
-> 20,000+ AI skills, tools, agents, rules, and MCP servers — recommended in context.
+**AI Resource Intelligence** — Find the right tool for any AI task.
+
+Search, discover, and get recommendations from 20,000+ skills, tools, agents, rules, and MCP servers — all from your terminal or AI client.
+
+[![npm](https://img.shields.io/npm/v/skillhub-mcp)](https://www.npmjs.com/package/skillhub-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Quick Start
 
-### 1. Setup (one command)
+### 1. Setup (30 seconds)
 
 ```bash
 npx skillhub-mcp setup
 ```
 
-This auto-detects your MCP clients and configures them.
-Or target a specific client:
+This auto-detects your installed AI clients (Codex, Claude, Cursor, Windsurf) and configures them automatically.
+
+### 2. Restart your AI client
+
+### 3. Done!
+
+Your AI assistant can now discover and recommend tools. Try asking it:
+
+> "What tools should I use to build a RAG pipeline with LangChain?"
+
+---
+
+## CLI Usage
+
+SkillHub also works as a standalone CLI — no MCP client required.
+
+### Recommend tools for a task
 
 ```bash
-npx skillhub-mcp setup codex     # OpenAI Codex CLI
-npx skillhub-mcp setup claude    # Claude Desktop
-npx skillhub-mcp setup cursor    # Cursor IDE
-npx skillhub-mcp setup windsurf  # Windsurf IDE
+npx skillhub-mcp recommend "build a REST API with authentication"
 ```
 
-### 2. Restart your client
+Output:
+```
+  #1  Express.js  ✓  9.2
+      Fast, unopinionated web framework for Node.js
+      tool · cross-platform · expressjs
+      → matches technologies: express, node; relevant to: api, coding
 
-After setup, restart your AI client (Codex, Claude, Cursor, etc.)
+  #2  Passport.js  8.8
+      Authentication middleware for Node.js
+      tool · cross-platform · jaredhanson
+      → matches technologies: node; relevant to: authentication
+```
 
-### 3. Verify
+### Search resources
+
+```bash
+npx skillhub-mcp search "vector database"
+```
+
+### Get resource details
+
+```bash
+npx skillhub-mcp info "LangChain"
+```
+
+### Database statistics
+
+```bash
+npx skillhub-mcp stats
+```
+
+### JSON output
+
+All data commands support `--json` for piping and scripting:
+
+```bash
+npx skillhub-mcp recommend "kubernetes" --json | jq '.results[0]'
+npx skillhub-mcp stats --json
+```
+
+---
+
+## MCP Tools
+
+When connected to an AI client, SkillHub exposes these tools:
+
+| Tool | Description |
+|------|-------------|
+| `recommend` | Analyze a task and recommend relevant resources |
+| `search` | Search 20,000+ resources by keyword |
+| `get_resource` | Get full details for a specific resource |
+| `get_setup_guide` | Get install instructions for any resource |
+| `analyze_stack` | Recommend tools based on your tech stack |
+
+---
+
+## Diagnostics
 
 ```bash
 npx skillhub-mcp doctor
 ```
 
-That's it. Your AI can now recommend tools from 20,000+ resources.
+Checks Node.js version, `npx` path resolution, database loading, and MCP client configuration status.
 
 ---
 
-## What This Does
+## Manual Client Setup
 
-Once configured, your AI assistant gains **5 intelligence tools** that help it recommend the right AI resources:
-
-| Tool | What It Does |
-|------|-------------|
-| `recommend` | Analyzes your task and returns ranked recommendations |
-| `search` | Searches resources by name, type, or ecosystem |
-| `get_resource` | Gets full details about a specific resource |
-| `get_setup_guide` | Provides install and config instructions |
-| `analyze_stack` | Suggests complementary AI tools for your tech stack |
-
-**You don't call these tools.** Your AI calls them automatically when relevant.
-
----
-
-## Manual Setup
-
-If you prefer manual configuration:
-
-### OpenAI Codex
-
-Add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.skillhub]
-command = "/opt/homebrew/bin/npx"  # or: which npx
-args = ["-y", "skillhub-mcp"]
-startup_timeout_sec = 30
-tool_timeout_sec = 60
-```
-
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "skillhub": {
-      "command": "/opt/homebrew/bin/npx",
-      "args": ["-y", "skillhub-mcp"]
-    }
-  }
-}
-```
-
-### Cursor / Windsurf / VS Code
-
-```json
-{
-  "mcpServers": {
-    "skillhub": {
-      "command": "/opt/homebrew/bin/npx",
-      "args": ["-y", "skillhub-mcp"]
-    }
-  }
-}
-```
-
-> **Important:** Use the full path to `npx` (run `which npx` to find it).
-> GUI apps often can't find `npx` through PATH alone.
-> Run `npx skillhub-mcp print-config <client>` to get the correct config with your system's npx path.
-
----
-
-## CLI
-
-Also usable as a standalone CLI:
+If the setup wizard doesn't work for your client, generate the config manually:
 
 ```bash
-npx skillhub-mcp recommend "build a RAG pipeline with LangChain"
-npx skillhub-mcp search "vector database"
-npx skillhub-mcp info "Pinecone"
-npx skillhub-mcp stats
+npx skillhub-mcp print-config codex    # Codex (TOML)
+npx skillhub-mcp print-config claude   # Claude Desktop (JSON)
+npx skillhub-mcp print-config cursor   # Cursor (JSON)
+npx skillhub-mcp print-config windsurf # Windsurf (JSON)
 ```
 
-## Troubleshooting
+> **Important:** The setup wizard uses absolute paths for `npx` (e.g., `/opt/homebrew/bin/npx`). GUI applications like Claude Desktop and Cursor often don't inherit your shell's PATH, so relative `npx` will fail silently.
 
-```bash
-npx skillhub-mcp doctor    # Full diagnostics
-```
+---
 
-This checks:
-- ✅ Node.js version (≥ 18 required)
-- ✅ npx absolute path (for GUI apps)
-- ✅ Database loaded (20,000+ resources)
-- ✅ Per-client config status
+## Requirements
 
-**Common issues:**
-
-| Problem | Fix |
-|---------|-----|
-| "No MCP servers configured" | Run `npx skillhub-mcp setup <client>`, then restart |
-| npx not found in GUI app | Use absolute path — run `npx skillhub-mcp print-config <client>` |
-| Server not responding | Restart the AI client after config changes |
-| Wrong Node version | Install Node 18+: `brew install node` |
-
-## Uninstall
-
-Remove the `skillhub` entry from your MCP config, then restart the client.
+- Node.js 18+
+- npm / npx
 
 ## License
 
-MIT — [github.com/artuntan/skillhub-mcp](https://github.com/artuntan/skillhub-mcp)
+MIT

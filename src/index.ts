@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * SkillHub MCP — Unified entrypoint v0.3.0
+ * SkillHub MCP — Unified entrypoint v0.4.0
  *
- * Smart dispatcher with premium terminal presentation.
+ * Context-aware smart dispatcher with premium terminal presentation.
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { analyzePrompt, explainRecommendation } from "./engine/analyzer.js";
 import { loadResources, getIndex, findResourceByTitle, getStats } from "./engine/loader.js";
 import { rankResources, deduplicateResults } from "./engine/ranker.js";
-import { runSetup, runDoctor, runPrintConfig, VERSION } from "./setup.js";
+import { runSetup, runDoctor, runPrintConfig, getConfigStatus, VERSION } from "./setup.js";
 import * as ui from "./ui.js";
 
 // ── Parse args ───────────────────────────────────────────────
@@ -37,7 +37,13 @@ if (command && CLI_COMMANDS.has(command)) {
 } else if (!process.stdin.isTTY) {
     startServer();
 } else {
-    printHelp();
+    // Context-aware: onboarding if unconfigured, help if configured
+    const status = getConfigStatus();
+    if (status.configured === 0) {
+        printOnboarding(status);
+    } else {
+        printHelp();
+    }
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -59,6 +65,39 @@ async function startServer() {
 // CLI
 // ═════════════════════════════════════════════════════════════
 
+function printOnboarding(status: { installed: number; configured: number }) {
+    console.log(ui.banner());
+    console.log(`  ${ui.dim(`v${VERSION}`)}`);
+    console.log(`  ${ui.dim("AI resource intelligence — 20,000+ tools, skills, agents & MCP servers")}`);
+    console.log("");
+
+    if (status.installed > 0) {
+        console.log(`  ${ui.yellow("!")} ${ui.bold("Setup needed")} — ${status.installed} MCP client(s) detected but not configured.`);
+    } else {
+        console.log(`  ${ui.cyan("·")} No MCP clients detected yet. You can still use the CLI directly.`);
+    }
+
+    console.log("");
+    console.log(ui.subheading("Get Started in 30 Seconds"));
+    console.log("");
+    console.log(`    ${ui.bold(ui.cyan("Step 1"))}  Run the setup wizard`);
+    console.log(`            ${ui.dim("$")} ${ui.cyan("npx skillhub-mcp setup")}`);
+    console.log("");
+    console.log(`    ${ui.bold(ui.cyan("Step 2"))}  Restart your AI client (Codex, Claude, Cursor, etc.)`);
+    console.log("");
+    console.log(`    ${ui.bold(ui.cyan("Step 3"))}  Done! Your AI assistant can now recommend tools.`);
+    console.log("");
+
+    console.log(ui.subheading("Or Try the CLI Right Now"));
+    console.log("");
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp recommend ${ui.dim('"build a REST API with auth"')}`);
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp search ${ui.dim('"vector database"')}`);
+    console.log(`    ${ui.dim("$")} npx skillhub-mcp stats`);
+    console.log("");
+    console.log(`  ${ui.dim("Run")} npx skillhub-mcp --help ${ui.dim("for all commands.")}`);
+    console.log("");
+}
+
 function printHelp() {
     console.log(ui.banner());
     console.log(`  ${ui.dim(`v${VERSION}`)}`);
@@ -78,15 +117,17 @@ function printHelp() {
     console.log(ui.helpCommand("--no-color", "Disable colored output"));
     console.log(ui.helpCommand("--version", "Show version number"));
 
-    console.log(ui.helpSection("Quick Start"));
-    console.log(`    ${ui.cyan("1.")} npx skillhub-mcp setup`);
-    console.log(`    ${ui.cyan("2.")} Restart your AI client`);
-    console.log(`    ${ui.cyan("3.")} Done — your AI can now recommend tools`);
-
-    console.log(ui.helpSection("Examples"));
-    console.log(`    ${ui.dim("$")} npx skillhub-mcp recommend ${ui.dim('"build a RAG pipeline with LangChain"')}`);
-    console.log(`    ${ui.dim("$")} npx skillhub-mcp search ${ui.dim('"vector database"')} --json`);
-    console.log(`    ${ui.dim("$")} npx skillhub-mcp setup codex`);
+    // Context-aware: show try-it suggestion
+    const status = getConfigStatus();
+    if (status.configured > 0) {
+        console.log(ui.helpSection("Try It"));
+        console.log(`    ${ui.dim("$")} npx skillhub-mcp recommend ${ui.dim('"build a RAG pipeline"')}`);
+    } else {
+        console.log(ui.helpSection("Quick Start"));
+        console.log(`    ${ui.cyan("1.")} npx skillhub-mcp setup`);
+        console.log(`    ${ui.cyan("2.")} Restart your AI client`);
+        console.log(`    ${ui.cyan("3.")} Done — your AI can now recommend tools`);
+    }
     console.log("");
 }
 

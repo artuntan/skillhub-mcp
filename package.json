@@ -1,6 +1,6 @@
 {
     "name": "skillhub-mcp",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "description": "AI resource intelligence MCP server — recommends skills, tools, agents, rules, and MCP servers from 20,000+ resources",
     "type": "module",
     "bin": {
@@ -15,6 +15,7 @@
     },
     "files": [
         "dist/",
+        "scripts/",
         "README.md",
         "LICENSE"
     ],
@@ -28,6 +29,7 @@
         "cli": "tsx src/cli.ts",
         "test": "node dist/cli.js stats",
         "test:recommend": "node dist/cli.js recommend 'build a RAG pipeline with LangChain'",
+        "postinstall": "node scripts/postinstall.js || true",
         "prepublishOnly": "npm run build && npm test",
         "postbuild": "node -e \"const fs=require('fs'); ['dist/index.js','dist/cli.js'].forEach(f => { const c = fs.readFileSync(f,'utf8'); if(!c.startsWith('#!')) fs.writeFileSync(f, '#!/usr/bin/env node\\n' + c); fs.chmodSync(f, '755'); });\""
     },

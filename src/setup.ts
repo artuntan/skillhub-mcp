@@ -12,7 +12,7 @@ import { getStats } from "./engine/loader.js";
 import * as ui from "./ui.js";
 
 // ── Version ──────────────────────────────────────────────────
-export const VERSION = "0.3.1";
+export const VERSION = "0.4.0";
 
 // ── Client definitions ──────────────────────────────────────
 
@@ -136,6 +136,15 @@ function isAlreadyConfigured(client: MCPClient): boolean {
     } catch {
         return false;
     }
+}
+
+// ── Public queries ───────────────────────────────────────────
+
+/** Get configuration status for context-aware routing */
+export function getConfigStatus(): { installed: number; configured: number; total: number } {
+    const installed = detectClients();
+    const configured = installed.filter(c => isAlreadyConfigured(c));
+    return { installed: installed.length, configured: configured.length, total: CLIENTS.length };
 }
 
 // ── Public commands ──────────────────────────────────────────
